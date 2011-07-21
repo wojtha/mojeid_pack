@@ -23,5 +23,11 @@ http://drupal.org/node/1179550 a http://drupal.org/node/1036310
 
 ZMĚNY
 
+2011-07-21 6.x-1.x-alpha2
+ - Odstraněny debugovací funkce z openid modulu
+ - Přidán XRDS dokument
+ - mojeID a mojeID UC Addresses sloučeny do jednoho projektu
+ - Vytvořen projekt pro mojeID modul: http://drupal.org/project/mojeid 
+
 2011-07-08 6.x-1.x-alpha1
-Úvodní verze
+ - Úvodní verze
