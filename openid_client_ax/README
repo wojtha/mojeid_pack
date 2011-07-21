@@ -1,0 +1,25 @@
+; $Id$
+
+OPENID CLIENT AX
+----------------
+
+This module provides an API for consuming OpenID fields according to the
+OpenID Attribute Exchange specification 
+http://openid.net/specs/openid-attribute-exchange-1_0.html
+
+Typically, OpenID Client AX is used together with OpenID Content Profile Field 
+http://drupal.org/project/openid_cp_field to map OpenID Attributes to node 
+fields.
+
+CREDITS
+-------
+
+Developed and maintained by Darren Ferguson <http://www.openbandlabs.com/crew/darrenferguson>
+Development sponsored by OpenBand, a subsidiary of M.C.Dean, Inc. <http://www.openbandlabs.com/>
+
+LIMITATIONS AND WARNINGS
+------------------------
+
+MYOPENID.COM does not support the correct axschema.org namespaces.
+
+You have to use http://schema.openid.net in order to make it work.

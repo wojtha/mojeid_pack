@@ -1,0 +1,3 @@
+[submodule "mojeid"]
+	path = mojeid
+	url = wojtha@git.drupal.org:project/mojeid.git

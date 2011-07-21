@@ -1,0 +1,661 @@
+<?php
+// $Id$
+
+/**
+ * @file
+ * Module providing openid client attribute exchange capability for Drupal
+ */
+
+/**
+ * Implementation of hook_perm().
+ */
+function openid_client_ax_perm() {
+  return array('administer openid client ax');
+}
+
+/**
+ * Implementation of hook_menu()
+ */
+function openid_client_ax_menu() {
+  $items = array();
+  $items['admin/settings/openid_client_ax'] = array(
+    'title'            => 'OpenID Client Attribute Exchange',
+    'description'      => 'Configure the OpenID Client Attribute Exchange settings',
+    'page callback'    => 'drupal_get_form',
+    'page arguments'   => array('openid_client_ax_admin_settings'),
+    'access arguments' => array('administer openid client ax'),
+  );
+  return $items;
+}
+
+/**
+ * Implementation of hook_menu_alter()
+ */
+function openid_client_ax_menu_alter(&$callbacks) {
+  $callbacks['openid/authenticate']['page callback'] = 'openid_client_ax_authentication_page';
+  $callbacks['openid/authenticate']['file'] = NULL;
+  $callbacks['user/%user/openid']['page callback'] = 'openid_client_ax_user_identities';
+}
+
+/**
+ * Implementation of hook_openid()
+ */
+function openid_client_ax_openid($op, $request = array()) {
+  // add our information to the request if op is request and we are enabled
+  if ($op == 'request') {
+    $request = array();
+    $ax = variable_get('openid_client_ax_alias', 'ax');
+    $request[sprintf('openid.ns.%s', $ax)] = 'http://openid.net/srv/ax/1.0';
+    $request[sprintf('openid.%s.mode', $ax)] = 'fetch_request';
+    $short_names = $attributes = array();
+    $attributes = module_invoke_all('openid_client', 'get');
+    foreach ($attributes as $attrib_url) {
+      //if (strstr($attrib_url, 'axschema.org') !== FALSE) {
+      $attrib_name = openid_client_ax_attribute_name($attrib_url);
+      $short_names[] = $attrib_name;
+      $request[sprintf('openid.%s.type.%s', $ax, $attrib_name)] = $attrib_url;
+      //}
+    }
+    if (count($short_names) > 0) {
+      $request[sprintf('openid.%s.if_available', $ax)] = implode(",", $short_names);
+    }
+    return $request;
+  }
+}
+
+/**
+ * Creates attribute name from URL
+ *
+ * @param string $url
+ *   Uri of the attribute
+ * @return string
+ *   Short name of the attribute
+ */
+function openid_client_ax_attribute_name($uri) {
+  $parts = array_filter(explode('/', str_replace('http://', '', $uri)), 'strlen');
+  array_shift($parts);
+  return implode('_', $parts);
+}
+
+/**
+ * Settings function for the module
+ */
+function openid_client_ax_admin_settings() {
+  $form = array();
+  $form['openid_client_ax'] = array('#type' => 'fieldset', '#title' => t('OpenID Client Attribute Exchange Settings'), '#collapsible' => TRUE, '#collapsed' => FALSE);
+  $form['openid_client_ax']['openid_client_ax_alias'] = array(
+    '#type'          => 'textfield',
+    '#title'         => t('Namespace to utilize for Attribute Exchange'),
+    '#default_value' => variable_get('openid_client_ax_alias', 'ax'),
+    '#description'   => t('Per OpenID Specification you can specify your own namespace for attribute exchange that way you are guaranteed to always get your information back without conflicting with another'),
+  );
+  $form['openid_client_ax']['openid_client_ax_domain'] = array(
+    '#type'          => 'textfield',
+    '#title'         => t('Domain for AX definitions'),
+    '#default_value' => variable_get('openid_client_ax_domain', 'openid.net'),
+    '#description'   => t('Prefix domain to use for ax definitions since some providers use different domains than the standard ones'),
+  );
+  if (module_exists('content_profile')) {
+    $form['openid_client_ax']['openid_client_ax_supress_notifications'] = array(
+      '#type'          => 'checkbox',
+      '#title'         => t('Supress Content Profile Notifications'),
+      '#default_value' => variable_get('openid_client_ax_supress_notifications', FALSE),
+      '#description'   => t('If checked we will supress notifications when a user logs in via Open ID and Client Attribute exchange if the content profile is updated'),
+    );
+  }
+  return system_settings_form($form);
+}
+
+/**
+ * Menu callback; Process an OpenID authentication.
+ */
+function openid_client_ax_authentication_page() {
+  $result = openid_complete();
+  dpm($result, 'auth_result');
+  switch ($result['status']) {
+    case 'success':
+      return openid_client_ax_authentication($result);
+    case 'failed':
+      drupal_set_message(t('OpenID login failed.'), 'error');
+      break;
+    case 'cancel':
+      drupal_set_message(t('OpenID login cancelled.'));
+      break;
+  }
+  drupal_goto();
+}
+
+/**
+ * Authenticate a user or attempt registration.
+ *
+ * @param $response Response values from the OpenID Provider.
+ */
+function openid_client_ax_authentication($response) {
+  module_load_include('inc', 'openid');
+
+  $identity = isset($response['openid.identity']) ? $response['openid.identity'] : $response['openid.claimed_id'];
+
+  $account = user_external_load($identity);
+  if (isset($account->uid)) {
+    if (!variable_get('user_email_verification', TRUE) || $account->login) {
+      if (user_external_login($account, $_SESSION['openid']['user_login_values']) === TRUE) {
+        // Let other modules to save the things to the user
+        module_invoke_all('openid_client', 'save', $response, $account);
+      }
+    }
+    else {
+      drupal_set_message(t('You must validate your email address for this account before logging in via OpenID'));
+    }
+  }
+  elseif (variable_get('user_register', 1)) {
+    // Register new user
+    $form_state = array();
+    $form_state['redirect'] = NULL;
+    $form_state['values']['name'] = (empty($response['openid.sreg.nickname'])) ? $identity : $response['openid.sreg.nickname'];
+    $form_state['values']['mail'] = (empty($response['openid.sreg.email'])) ? '' : $response['openid.sreg.email'];
+    $form_state['values']['pass']  = user_password();
+    $form_state['values']['status'] = 1;
+    $form_state['values']['response'] = $response;
+    $form_state['values']['auth_openid'] = $identity;
+    $form = drupal_retrieve_form('user_register', $form_state);
+    drupal_prepare_form('user_register', $form, $form_state);
+    drupal_validate_form('user_register', $form, $form_state);
+    if (form_get_errors()) {
+      // We were unable to register a valid new user, redirect to standard
+      // user/register and prefill with the values we received.
+      drupal_set_message(t('OpenID registration failed for the reasons listed. You may register now, or if you already have an account you can <a href="@login">log in</a> now and add your OpenID under "My Account"', array('@login' => url('user/login'))), 'error');
+      $_SESSION['openid']['values'] = $form_state['values'];
+      // We'll want to redirect back to the same place.
+      $destination = drupal_get_destination();
+      unset($_REQUEST['destination']);
+      drupal_goto('user/register', $destination);
+    }
+    else {
+      unset($form_state['values']['response']);
+      $account = user_save('', $form_state['values']);
+      // Terminate if an error occured during user_save().
+      if (!$account) {
+        drupal_set_message(t("Error saving user account."), 'error');
+        drupal_goto();
+      }
+      // Verify if the user_external_login failed or suceeded
+      if (user_external_login($account) === TRUE) {
+        // Let other modules to save the things to the user
+        module_invoke_all('openid_client', 'save', $response, $account);
+      }
+    }
+    drupal_redirect_form($form, $form_state['redirect']);
+  }
+  else {
+    drupal_set_message(t('Only site administrators can create new user accounts.'), 'error');
+  }
+  drupal_goto();
+}
+
+/**
+ * Menu callback; Manage OpenID identities for the specified user.
+ *
+ * Overrides openid_user_identities callback - adding hook_openid_client
+ *
+ * @see openid_user_identities
+ */
+function openid_client_ax_user_identities($account) {
+  drupal_set_title(check_plain($account->name));
+  drupal_add_css(drupal_get_path('module', 'openid') .'/openid.css', 'module');
+
+  // Check to see if we got a response
+  $result = openid_complete();
+  if ($result['status'] == 'success') {
+    //$identity = $result['openid.claimed_id'];
+    dpm($result, 'result');
+    $identity = isset($result['openid.identity']) ? $result['openid.identity'] : $result['openid.claimed_id'];
+    if (db_result(db_query("SELECT uid FROM {authmap} WHERE authname='%s' AND module='openid'", $identity))) {
+      drupal_set_message(t('Identity %identity (claimed_id: %claimed_id) found in user account.', array('%identity' => $identity, '%claimed_id' => $result['openid.claimed_id'])));
+    }
+    else {
+      db_query("INSERT INTO {authmap} (uid, authname, module) VALUES (%d, '%s','openid')", $account->uid, $identity);
+      drupal_set_message(t('Successfully added %identity', array('%identity' => $identity)));
+    }
+    // Let other openid client modules save the things to the user
+    module_invoke_all('openid_client', 'add', $result, $account);
+  }
+
+  $header = array(t('OpenID'), t('Operations'));
+  $rows = array();
+
+  $result = db_query("SELECT * FROM {authmap} WHERE module='openid' AND uid=%d", $account->uid);
+  while ($identity = db_fetch_object($result)) {
+    $rows[] = array(check_plain($identity->authname), l(t('Delete'), 'user/'. $account->uid .'/openid/delete/'. $identity->aid));
+  }
+
+  $output = theme('table', $header, $rows);
+  $output .= drupal_get_form('openid_user_add');
+  return $output;
+}
+
+
+/**
+ * Helper function to retrieve the values if we have a multiple value attribute returned
+ *
+ * @param $response
+ *      Response array we received from the OpenID Provider
+ * @param $attribute
+ *      Attribute we wish to retrieve values for
+ * @param $count
+ *      Number of values we have in the multiple value
+ */
+function _openid_client_ax_get_multiple_values($response, $attribute, $count = 0) {
+  $return = "";
+  $counter = 1;
+  while ($counter <= $count) {
+    $field = sprintf(str_replace('type', 'value', $attribute) .".". $counter, OPENID_CLIENT_AX_ALIAS);
+    $return .= $response[$field] ." ";
+    $counter++;
+  }
+  return $return;
+}
+
+/**
+ * Create an array containing the identifiers as listed in
+ * http://www.axschema.org/types/
+ *
+ * @return
+ *   Array containing the schema definitions
+ */
+function openid_client_ax_schema_definitions() {
+
+  $attributes = array(
+    'http://axschema.org/namePerson' => array(
+      'identifier'  => 1,
+      'label'       => t('Full Name'),
+      'description' => t('Full name of subject'),
+      'type'        => 'http://www.w3.org/2001/XMLSchema#normalizedString',
+      'sreg'        => 'openid.sreg.fullname',
+      'section'     => t('Name'),
+    ),
+    'http://axschema.org/namePerson/prefix' => array(
+      'identifier'  => 2,
+      'label'       => t('Name prefix'),
+      'description' => t('Honorific prefix for the subject\'s name; i.e. "Mr.", "Mrs.", "Dr."'),
+      'type'        => 'http://www.w3.org/2001/XMLSchema#normalizedString',
+      'section'     => t('Name'),
+    ),
+    'http://axschema.org/namePerson/first' => array(
+      'identifier'  => 3,
+      'label'       => t('First name'),
+      'description' => t('First or given name of subject'),
+      'type'        => 'http://www.w3.org/2001/XMLSchema#normalizedString',
+      'section'     => t('Name'),
+    ),
+    'http://axschema.org/namePerson/last' => array(
+      'identifier'  => 4,
+      'label'       => t('Last name'),
+      'description' => t('Last name or surname of subject'),
+      'type'        => 'http://www.w3.org/2001/XMLSchema#normalizedString',
+      'section'     => t('Name'),
+    ),
+    'http://axschema.org/namePerson/middle' => array(
+      'identifier'  => 5,
+      'label'       => t('Middle name'),
+      'description' => t('Middle name(s) of subject'),
+      'type'        => 'http://www.w3.org/2001/XMLSchema#normalizedString',
+      'section'     => t('Name'),
+    ),
+    'http://axschema.org/namePerson/suffix' => array(
+      'identifier'  => 6,
+      'label'       => t('Name suffix'),
+      'description' => t('Suffix of subject\'s name'),
+      'type'        => 'http://www.w3.org/2001/XMLSchema#normalizedString',
+      'section'     => t('Name'),
+    ),
+    'http://axschema.org/namePerson/friendly' => array(
+      'identifier'  => 7,
+      'label'       => t('Alias'),
+      'description' => t('Subject\'s alias or "screen" name'),
+      'type'        => 'http://www.w3.org/2001/XMLSchema#normalizedString',
+      'sreg'        => 'openid.sreg.nickname',
+      'section'     => t('Name'),
+    ),
+    'http://axschema.org/company/name' => array(
+      'identifier'  => 8,
+      'label'       => t('Company'),
+      'description' => t('Company name (employer) '),
+      'type'        => 'http://www.w3.org/2001/XMLSchema#normalizedString',
+      'section'     => t('Work'),
+    ),
+    'http://axschema.org/company/title' => array(
+      'identifier'  => 9,
+      'label'       => t('Title'),
+      'description' => t('Employee title'),
+      'type'        => 'http://www.w3.org/2001/XMLSchema#normalizedString',
+      'section'     => t('Work'),
+    ),
+    'http://axschema.org/birthDate' => array(
+      'identifier'  => 10,
+      'label'       => t('Birth Date'),
+      'description' => t('Date of Birth'),
+      'type'        => 'http://www.w3.org/2001/XMLSchema#date',
+      'sreg'        => 'openid.sreg.dob',
+      'section'     => t('Date-Of-Birth'),
+    ),
+    'http://axschema.org/birthDate/birthYear' => array(
+      'identifier'  => 11,
+      'label'       => t('Birth year'),
+      'description' => t('Year of birth (four digits) '),
+      'type'        => 'http://www.w3.org/2001/XMLSchema#gYear',
+      'section'     => t('Date-Of-Birth'),
+    ),
+    'http://axschema.org/birthDate/birthMonth' => array(
+      'identifier'  => 12,
+      'label'       => t('Birth month'),
+      'description' => t('Month of birth (1-12)'),
+      'type'        => 'http://www.w3.org/2001/XMLSchema#gMonth',
+      'section'     => t('Date-Of-Birth'),
+    ),
+    'http://axschema.org/birthDate/birthday' => array(
+      'identifier'  => 13,
+      'label'       => t('Birth day'),
+      'description' => t('Day of birth'),
+      'type'        => 'http://www.w3.org/2001/XMLSchema#gDay',
+      'section'     => t('Date-Of-Birth'),
+    ),
+    'http://axschema.org/contact/phone/default' => array(
+      'identifier'  => 14,
+      'label'       => t('Phone (preferred) '),
+      'description' => t('Main phone number (preferred) '),
+      'type'        => 'http://www.w3.org/2001/XMLSchema#normalizedString',
+      'section'     => t('Telephone'),
+    ),
+    'http://axschema.org/contact/phone/home' => array(
+      'identifier'  => 15,
+      'label'       => t('Phone (home) '),
+      'description' => t('Home phone number'),
+      'type'        => 'http://www.w3.org/2001/XMLSchema#normalizedString',
+      'section'     => t('Telephone'),
+    ),
+    'http://axschema.org/contact/phone/business' => array(
+      'identifier'  => 16,
+      'label'       => t('Phone (work) '),
+      'description' => t('Business phone number '),
+      'type'        => 'http://www.w3.org/2001/XMLSchema#normalizedString',
+      'section'     => t('Telephone'),
+    ),
+    'http://axschema.org/contact/phone/cell' => array(
+      'identifier'  => 17,
+      'label'       => t('Phone (mobile) '),
+      'description' => t('Cellular (or mobile) phone number '),
+      'type'        => 'http://www.w3.org/2001/XMLSchema#normalizedString',
+      'section'     => t('Telephone'),
+    ),
+    'http://axschema.org/contact/phone/fax' => array(
+      'identifier'  => 18,
+      'label'       => t('Phone (fax) '),
+      'description' => t('Fax number'),
+      'type'        => 'http://www.w3.org/2001/XMLSchema#normalizedString',
+      'section'     => t('Telephone'),
+    ),
+    'http://axschema.org/contact/postalAddress/home' => array(
+      'identifier'  => 19,
+      'label'       => t('Address'),
+      'description' => t('Home postal address: street number, name and apartment number'),
+      'type'        => 'http://www.w3.org/2001/XMLSchema#normalizedString',
+      'section'     => t('Address'),
+    ),
+    'http://axschema.org/contact/postalAddressAdditional/home' => array(
+      'identifier'  => 20,
+      'label'       => t('Address 2'),
+      'description' => t('Home postal address: supplementary information'),
+      'type'        => 'http://www.w3.org/2001/XMLSchema#normalizedString',
+      'section'     => t('Address'),
+    ),
+    'http://axschema.org/contact/city/home' => array(
+      'identifier'  => 21,
+      'label'       => t('City'),
+      'description' => t('Home city name'),
+      'type'        => 'http://www.w3.org/2001/XMLSchema#normalizedString',
+      'section'     => t('Address'),
+    ),
+    'http://axschema.org/contact/state/home' => array(
+      'identifier'  => 22,
+      'label'       => t('State/Province'),
+      'description' => t('Home state or province name'),
+      'type'        => 'http://www.w3.org/2001/XMLSchema#normalizedString',
+      'section'     => t('Address'),
+    ),
+    'http://axschema.org/contact/country/home' => array(
+      'identifier'  => 23,
+      'label'       => t('Country'),
+      'description' => t('Home country code'),
+      'type'        => 'http://www.w3.org/2001/XMLSchema#normalizedString',
+      'section'     => t('Address'),
+    ),
+    'http://axschema.org/contact/postalCode/home' => array(
+      'identifier'  => 24,
+      'label'       => t('Postal code'),
+      'description' => t('Home postal code'),
+      'type'        => 'http://www.w3.org/2001/XMLSchema#normalizedString',
+      'section'     => t('Address'),
+    ),
+    'http://axschema.org/contact/postalAddress/business' => array(
+      'identifier'  => 25,
+      'label'       => t('Business Address'),
+      'description' => t('Business postal address: street number, name and apartment number'),
+      'type'        => 'http://www.w3.org/2001/XMLSchema#normalizedString',
+      'section'     => t('Business-Address'),
+    ),
+    'http://axschema.org/contact/postalAddressAdditional/business' => array(
+      'identifier'  => 26,
+      'label'       => t('Business Address 2 '),
+      'description' => t('Business postal address: supplementary information'),
+      'type'        => 'http://www.w3.org/2001/XMLSchema#normalizedString',
+      'section'     => t('Business-Address'),
+    ),
+    'http://axschema.org/contact/city/business' => array(
+      'identifier'  => 27,
+      'label'       => t('City'),
+      'description' => t('Business city name'),
+      'type'        => 'http://www.w3.org/2001/XMLSchema#normalizedString',
+      'section'     => t('Business-Address'),
+    ),
+    'http://axschema.org/contact/state/business' => array(
+      'identifier'  => 28,
+      'label'       => t('State/Province'),
+      'description' => t('Business state or province name '),
+      'type'        => 'http://www.w3.org/2001/XMLSchema#normalizedString',
+      'section'     => t('Business-Address'),
+    ),
+    'http://axschema.org/contact/country/business' => array(
+      'identifier'  => 29,
+      'label'       => t('Country'),
+      'description' => t('Business country code'),
+      'type'        => 'http://www.w3.org/2001/XMLSchema#normalizedString',
+      'section'     => t('Business-Address'),
+    ),
+    'http://axschema.org/contact/postalCode/business' => array(
+      'identifier'  => 30,
+      'label'       => t('Postal code'),
+      'description' => t('Business postal code'),
+      'type'        => 'http://www.w3.org/2001/XMLSchema#normalizedString',
+      'section'     => t('Business-Address'),
+    ),
+    'http://axschema.org/contact/email' => array(
+      'identifier'  => 31,
+      'label'       => t('Email'),
+      'description' => t('Internet SMTP email address as per RFC2822'),
+      'type'        => 'http://www.w3.org/2001/XMLSchema#normalizedString',
+      'sreg'        => 'openid.sreg.email',
+      'section'     => t('Email'),
+    ),
+    'http://axschema.org/contact/IM/AIM' => array(
+      'identifier'  => 32,
+      'label'       => t('AOL IM'),
+      'description' => t('AOL instant messaging service handle'),
+      'type'        => 'http://www.w3.org/2001/XMLSchema#normalizedString',
+      'section'     => t('Instant-Messaging'),
+    ),
+    'http://axschema.org/contact/IM/ICQ' => array(
+      'identifier'  => 33,
+      'label'       => t('ICQ IM'),
+      'description' => t('ICQ instant messaging service handle'),
+      'type'        => 'http://www.w3.org/2001/XMLSchema#normalizedString',
+      'section'     => t('Instant-Messaging'),
+    ),
+    'http://axschema.org/contact/IM/MSN' => array(
+      'identifier'  => 34,
+      'label'       => t('MSN IM'),
+      'description' => t('MSN instant messaging service handle'),
+      'type'        => 'http://www.w3.org/2001/XMLSchema#normalizedString',
+      'section'     => t('Instant-Messaging'),
+    ),
+    'http://axschema.org/contact/IM/Yahoo' => array(
+      'identifier'  => 35,
+      'label'       => t('Yahoo! IM'),
+      'description' => t('Yahoo! instant messaging service handle'),
+      'type'        => 'http://www.w3.org/2001/XMLSchema#normalizedString',
+      'section'     => t('Instant-Messaging'),
+    ),
+    'http://axschema.org/contact/IM/Jabber' => array(
+      'identifier'  => 36,
+      'label'       => t('Jabber IM'),
+      'description' => t('Jabber instant messaging service handle'),
+      'type'        => 'http://www.w3.org/2001/XMLSchema#normalizedString',
+      'section'     => t('Instant-Messaging'),
+    ),
+    'http://axschema.org/contact/IM/Skype' => array(
+      'identifier'  => 37,
+      'label'       => t('Skype IM '),
+      'description' => t('Skype instant messaging service handle'),
+      'type'        => 'http://www.w3.org/2001/XMLSchema#normalizedString',
+      'section'     => t('Instant-Messaging'),
+    ),
+    'http://axschema.org/contact/web/default' => array(
+      'identifier'  => 38,
+      'label'       => t('Web page'),
+      'description' => t('Web site URL'),
+      'type'        => 'http://www.w3.org/2001/XMLSchema#anyURI',
+      'section'     => t('Web-Sites'),
+    ),
+    'http://axschema.org/contact/web/blog' => array(
+      'identifier'  => 39,
+      'label'       => t('Blog'),
+      'description' => t('Blog URL'),
+      'type'        => 'http://www.w3.org/2001/XMLSchema#anyURI',
+      'section'     => t('Web-Sites'),
+    ),
+    'http://axschema.org/contact/web/Linkedin' => array(
+      'identifier'  => 40,
+      'label'       => t('LinkedIn URL'),
+      'description' => t('LinkedIn URL'),
+      'type'        => 'http://www.w3.org/2001/XMLSchema#anyURI',
+      'section'     => t('Web-Sites'),
+    ),
+    'http://axschema.org/contact/web/Amazon' => array(
+      'identifier'  => 41,
+      'label'       => t('Amazon URL'),
+      'description' => t('Amazon URL'),
+      'type'        => 'http://www.w3.org/2001/XMLSchema#anyURI',
+      'section'     => t('Web-Sites'),
+    ),
+    'http://axschema.org/contact/web/Flickr' => array(
+      'identifier'  => 42,
+      'label'       => t('Flickr URL'),
+      'description' => t('Flickr URL'),
+      'type'        => 'http://www.w3.org/2001/XMLSchema#anyURI',
+      'section'     => t('Web-Sites'),
+    ),
+    'http://axschema.org/contact/web/Delicious' => array(
+      'identifier'  => 43,
+      'label'       => t('del.icio.us URL'),
+      'description' => t('del.icio.us URL'),
+      'type'        => 'http://www.w3.org/2001/XMLSchema#anyURI',
+      'section'     => t('Web-Sites'),
+    ),
+    'http://axschema.org/media/spokenname' => array(
+      'identifier'  => 44,
+      'label'       => t('Spoken name'),
+      'description' => t('Spoken name (web URL) '),
+      'type'        => 'http://www.w3.org/2001/XMLSchema#anyURI',
+      'section'     => t('Audio/Video-Greetings'),
+    ),
+    'http://axschema.org/media/greeting/audio' => array(
+      'identifier'  => 45,
+      'label'       => t('Audio greeting'),
+      'description' => t('Audio greeting (web URL) '),
+      'type'        => 'http://www.w3.org/2001/XMLSchema#anyURI',
+      'section'     => t('Audio/Video-Greetings'),
+    ),
+    'http://axschema.org/media/greeting/video' => array(
+      'identifier'  => 46,
+      'label'       => t('Video greeting'),
+      'description' => t('Video greeting (web URL) '),
+      'type'        => 'http://www.w3.org/2001/XMLSchema#anyURI',
+      'section'     => t('Audio/Video-Greetings'),
+    ),
+    'http://axschema.org/media/image/default' => array(
+      'identifier'  => 47,
+      'label'       => t('Image'),
+      'description' => t('Image (web URL); unspecified dimension'),
+      'type'        => 'http://www.w3.org/2001/XMLSchema#anyURI',
+      'section'     => t('Images'),
+    ),
+    'http://axschema.org/media/image/aspect11' => array(
+      'identifier'  => 48,
+      'label'       => t('Square image'),
+      'description' => t('Image (web URL) with equal width and height'),
+      'type'        => 'http://www.w3.org/2001/XMLSchema#anyURI',
+      'section'     => t('Images'),
+    ),
+    'http://axschema.org/media/image/aspect43' => array(
+      'identifier'  => 49,
+      'label'       => t('4:3 aspect image'),
+      'description' => t('Image (web URL) 4:3 aspect ratio - landscape'),
+      'type'        => 'http://www.w3.org/2001/XMLSchema#anyURI',
+      'section'     => t('Images'),
+    ),
+    'http://axschema.org/media/image/aspect34' => array(
+      'identifier'  => 50,
+      'label'       => t('3:4 aspect image'),
+      'description' => t('Image (web URL) 3:4 aspect ratio - portrait'),
+      'type'        => 'http://www.w3.org/2001/XMLSchema#anyURI',
+      'section'     => t('Images'),
+    ),
+    'http://axschema.org/media/image/favicon' => array(
+      'identifier'  => 51,
+      'label'       => t('Favicon image'),
+      'description' => t('Image (web URL); favicon format'),
+      'type'        => 'http://www.w3.org/2001/XMLSchema#anyURI',
+      'section'     => t('Images'),
+    ),
+    'http://axschema.org/person/gender' => array(
+      'identifier'  => 52,
+      'label'       => t('Gender'),
+      'description' => t('Gender, either "M" or "F"'),
+      'type'        => 'http://www.w3.org/2001/XMLSchema#normalizedString',
+      'section'     => t('Extra-Information'),
+    ),
+    'http://axschema.org/pref/language' => array(
+      'identifier'  => 53,
+      'label'       => t('Language'),
+      'description' => t('Preferred language'),
+      'type'        => 'http://www.w3.org/2001/XMLSchema#normalizedString',
+      'section'     => t('Extra-Information'),
+    ),
+    'http://axschema.org/pref/timezone' => array(
+      'identifier'  => 54,
+      'label'       => t('Time zone'),
+      'description' => t('Home time zone information'),
+      'type'        => 'http://www.w3.org/2001/XMLSchema#normalizedString',
+      'section'     => t('Extra-Information'),
+    ),
+    'http://axschema.org/media/biography' => array(
+      'identifier'  => 55,
+      'label'       => t('Biography'),
+      'description' => t('Biography (text) '),
+      'type'        => 'http://www.w3.org/2001/XMLSchema#string',
+      'section'     => t('Extra-Information'),
+    ),
+  );
+
+  // hook_openid_ax_schema()
+  return array_merge($attributes, module_invoke_all('openid_ax_schema'));
+}

@@ -1,0 +1,245 @@
+# Czech translation of Drupal (6.4)
+# Copyright (c) 2008 by the Czech translation team
+# Generated from files:
+#  openid.inc,v 1.8 2008/01/30 22:11:22 goba
+#  openid.pages.inc,v 1.5.2.1 2008/07/09 21:48:28 goba
+#  openid.module,v 1.19.2.3 2008/07/09 21:48:28 goba
+#  openid.install,v 1.3 2007/10/10 11:39:33 goba
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: Drupal (6.4)\n"
+"POT-Creation-Date: 2008-09-29 17:46+0200\n"
+"PO-Revision-Date: 2008-03-25 23:21+0100\n"
+"Language-Team: Czech\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=3; plural=((n==1)?(0):(((n>=2)&&(n<=4))?(1):2));\n"
+
+#: modules/openid/openid.inc:44
+msgid "OpenID redirect"
+msgstr "OpenID přesměrování"
+
+#: modules/openid/openid.inc:67
+msgid "Send"
+msgstr "Poslat"
+
+#: modules/openid/openid.pages.inc:18
+msgid "OpenID login failed."
+msgstr "Přihlášení přes OpenID selhalo."
+
+#: modules/openid/openid.pages.inc:21
+msgid "OpenID login cancelled."
+msgstr "Přihlášení přes OpenID bylo přerušeno."
+
+#: modules/openid/openid.pages.inc:39
+msgid "Successfully added %identity"
+msgstr "Přidána identita %identity"
+
+#: modules/openid/openid.pages.inc:66
+msgid "Add an OpenID"
+msgstr "Přidat OpenID"
+
+#: modules/openid/openid.pages.inc:74
+msgid "That OpenID is already in use on this site."
+msgstr "Tato OpenID identita je již na tomto webu použita."
+
+#: modules/openid/openid.pages.inc:109
+msgid "OpenID deleted."
+msgstr "OpenID identita smazána."
+
+#: modules/openid/openid.module:48
+msgid ""
+"This site supports <a href=\"@openid-net\">OpenID</a>, a secure way to log "
+"into many websites using a single username and password. OpenID can reduce "
+"the necessity of managing many usernames and passwords for many websites."
+msgstr ""
+"Tento web podporuje <a href=\"@openid-net\">OpenID</a>, bezpečnou cestu pro "
+"přihlášení k mnoha webům pomocí jediného jména a hesla. OpenID umožňuje "
+"nutnost spravovat mnoho uživatelských jmen a hesel."
+
+#: modules/openid/openid.module:49
+msgid ""
+"To use OpenID you must first establish an identity on a public or private "
+"OpenID server. If you do not have an OpenID and would like one, look into "
+"one of the <a href=\"@openid-providers\">free public providers</a>. You can "
+"find out more about OpenID at <a href=\"@openid-net\">this website</a>."
+msgstr ""
+"Pro použití OpenID je třeba mít vytvořenou identitu na jednom z veřejných či "
+"privátních OpenID serverů. Pokud OpenID nemáte, podívejte se na <a href="
+"\"@openid-providers\">seznam veřejných serverů</a>. <a href=\"@openid-net"
+"\">Více o OpenID</a>."
+
+#: modules/openid/openid.module:50
+msgid ""
+"If you already have an OpenID, enter the URL to your OpenID server below (e."
+"g. myusername.openidprovider.com). Next time you login, you will be able to "
+"use this URL instead of a regular username and password. You can have "
+"multiple OpenID servers if you like; just keep adding them here."
+msgstr ""
+"Pokud již máte OpenID identitu, zadejte URL Vašeho OpenID serveru níže. "
+"(např. uzivatel.openid.net). Při příštím přihlášení budete moci použít tuto "
+"URL místo běžného jména a hesla. Můžete mít více OpenID najednou."
+
+#: modules/openid/openid.module:54
+msgid ""
+"OpenID is a secure method for logging into many websites with a single "
+"username and password. It does not require special software, and it does not "
+"share passwords with any site to which it is associated; including your site."
+msgstr ""
+"OpenID je bezpečná metoda pro přihlašování k mnoha webům pomocí jediného "
+"uživatelského jména a hesla. Nevyžaduje speciální software a nesdílí heslo s "
+"žádným webem, kde se používá, včetně tohoto."
+
+#: modules/openid/openid.module:55
+msgid ""
+"Users can create accounts using their OpenID, assign one or more OpenIDs to "
+"an existing account, and log in using an OpenID. This lowers the barrier to "
+"registration, which is good for the site, and offers convenience and "
+"security to the users. OpenID is not a trust system, so email verification "
+"is still necessary. The benefit stems from the fact that users can have a "
+"single password that they can use on many websites. This means they can "
+"easily update their single password from a centralized location, rather than "
+"having to change dozens of passwords individually."
+msgstr ""
+"Uživatelé mají možnost přihlásit se pomocí svého OpenID případně přiřadit "
+"jednu či více OpenID identit k existujícímu účtu. Celý proces registrace se "
+"zjednodušuje a poskytuje to uživatelům bezpečí a pohodlí. OpenID není systém "
+"na kontrolu záruky původu uživatele, kontrola e-mailové adresy je proto "
+"stále nutná. Hlavní výhodou OpenID je, že uživatelé mají jedno jediné heslo, "
+"které mohou použít na více webových stránkách. To mimojiné  znamená, že si "
+"mohou změnit heslo na jednom místě, bez potřeby navštívit několik stránek a "
+"měnit ho individuálně."
+
+#: modules/openid/openid.module:56
+msgid ""
+"The basic concept is as follows: A user has an account on an OpenID server. "
+"This account provides them with a unique URL (such as myusername."
+"openidprovider.com). When the user comes to your site, they are presented "
+"with the option of entering this URL. Your site then communicates with the "
+"OpenID server, asking it to verify the identity of the user. If the user is "
+"logged into their OpenID server, the server communicates back to your site, "
+"verifying the user. If they are not logged in, the OpenID server will ask "
+"the user for their password. At no point does your site record, or need to "
+"record the user's password."
+msgstr ""
+"Základní koncept OpenID: Uživatel má účet na OpenID serveru. Tento účet mu "
+"poskytuje unikátní URL (jako např. uzivatel.openid.net). Pokud přijde na "
+"tento web, má možnost zadat tuto URL. Web poté komunikuje s OpenID serverem "
+"s žádostí o ověření identity uživatele. Pokud je uživatel přihlášen k OpenID "
+"serveru, server vrátí informace zpět webu a tohoto uživatele potvrdí. Pokud "
+"přihlášen není, OpenID server se zeptá na uživatelské heslo. V žádném bodě "
+"web nezaznamenává ani nemá přístup k heslu uživatele."
+
+#: modules/openid/openid.module:57
+msgid ""
+"More information on OpenID is available at <a href=\"@openid-net\">OpenID."
+"net</a>."
+msgstr ""
+"Více informaci o OpenID je k dispozici na <a href=\"@openid-net\">OpenID."
+"net</a>."
+
+#: modules/openid/openid.module:58
+msgid ""
+"For more information, see the online handbook entry for <a href=\"@handbook"
+"\">OpenID module</a>."
+msgstr ""
+"Více informací naleznete v online příručce pro <a href=\"@handbook\">modul "
+"OpenID</a>."
+
+#: modules/openid/openid.module:70
+msgid "Once you have verified your email address, you may log in via OpenID."
+msgstr "Jakmile bude Váš e-mail ověřen, můžete se přihlásit pomocí OpenID."
+
+#: modules/openid/openid.module:92,109
+msgid "Log in using OpenID"
+msgstr "Přihlásit pomocí OpenID"
+
+#: modules/openid/openid.module:96
+msgid "Cancel OpenID login"
+msgstr "Zrušit OpenID přihlášení"
+
+#: modules/openid/openid.module:113
+msgid "What is OpenID?"
+msgstr "Co je OpenID?"
+
+#: modules/openid/openid.module:162
+msgid ""
+"Sorry, that is not a valid OpenID. Please ensure you have spelled your ID "
+"correctly."
+msgstr ""
+"Je nám líto, ale toto není platná OpenID identita. Prosím ověřte, že je "
+"správně napsána."
+
+#: modules/openid/openid.module:397
+msgid ""
+"You must validate your email address for this account before logging in via "
+"OpenID"
+msgstr "Před přihlášením pomocí OpenID je třeba ověřit Vaši e-mailovou adresu"
+
+#: modules/openid/openid.module:415
+msgid ""
+"OpenID registration failed for the reasons listed. You may register now, or "
+"if you already have an account you can <a href=\"@login\">log in</a> now and "
+"add your OpenID under \"My Account\""
+msgstr ""
+"OpenID registrace selhala pro níže uvedené důvody. Nyní se můžete "
+"registrovat či pokud již máte účet, můžete se <a href=\"@login\">přihlásit</"
+"a> a přidat Vaše OpenID identity pod položkou „Můj účet“"
+
+#: modules/openid/openid.module:14
+msgid "OpenID Login"
+msgstr "OpenID Přihlášení"
+
+#: modules/openid/openid.module:21
+msgid "OpenID identities"
+msgstr "OpenID identity"
+
+#: modules/openid/openid.module:30
+msgid "Delete OpenID"
+msgstr "Smazat OpenID"
+
+#: modules/openid/openid.module:0
+msgid "openid"
+msgstr "openid"
+
+#: modules/openid/openid.install:25
+msgid ""
+"Stores temporary shared key association information for OpenID "
+"authentication."
+msgstr "Ukládá dočasný sdílený klič pro OpenID autentizaci."
+
+#: modules/openid/openid.install:30
+msgid "URI of the OpenID Provider endpoint."
+msgstr "URI OpenID poskytovatele."
+
+#: modules/openid/openid.install:36
+msgid "Primary Key: Used to refer to this association in subsequent messages."
+msgstr "Primární klíč: Použit pro referenci v dalších zprávách."
+
+#: modules/openid/openid.install:41
+msgid "The signature algorithm used: one of HMAC-SHA1 or HMAC-SHA256."
+msgstr "Použitý algoritmus podpisu: HMAC-SHA1 nebo HMAC-SHA256."
+
+#: modules/openid/openid.install:46
+msgid ""
+"Valid association session types: \"no-encryption\", \"DH-SHA1\", and \"DH-"
+"SHA256\"."
+msgstr "Platné typy sezení: „bez šifrování“, „DH-SHA1“, „DH-SHA256“."
+
+#: modules/openid/openid.install:51
+msgid "The MAC key (shared secret) for this association."
+msgstr "Sdílený klič pro toto spojení."
+
+#: modules/openid/openid.install:57
+msgid "UNIX timestamp for when the association was created."
+msgstr "Časové razítko vytvoření spojení."
+
+#: modules/openid/openid.install:63
+msgid "The lifetime, in seconds, of this association."
+msgstr "Životnost této asociace ve vteřinách."
+
+#: modules/openid/openid.pages.inc:103
+msgid "Are you sure you want to delete the OpenID %authname for %user?"
+msgstr "Určitě smazat OpenID %authname pro %user?"
