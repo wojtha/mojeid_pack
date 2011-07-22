@@ -1,8 +1,7 @@
 
 mojeID module pack for Drupal 6.x
 
-Verze: 6.x-1.x-alpha1
-Autor: Vojtěch Kusý - http://vojtechkusy.cz
+author: Vojtěch Kusý - http://vojtechkusy.cz
 
 
 OBSAH BALÍČKU:

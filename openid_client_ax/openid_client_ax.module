@@ -1,5 +1,4 @@
 <?php
-// $Id$
 
 /**
  * @file
@@ -111,7 +110,6 @@ function openid_client_ax_admin_settings() {
  */
 function openid_client_ax_authentication_page() {
   $result = openid_complete();
-  dpm($result, 'auth_result');
   switch ($result['status']) {
     case 'success':
       return openid_client_ax_authentication($result);
@@ -206,9 +204,7 @@ function openid_client_ax_user_identities($account) {
   // Check to see if we got a response
   $result = openid_complete();
   if ($result['status'] == 'success') {
-    //$identity = $result['openid.claimed_id'];
-    dpm($result, 'result');
-    $identity = isset($result['openid.identity']) ? $result['openid.identity'] : $result['openid.claimed_id'];
+    $identity = $result['openid.claimed_id'];
     if (db_result(db_query("SELECT uid FROM {authmap} WHERE authname='%s' AND module='openid'", $identity))) {
       drupal_set_message(t('Identity %identity (claimed_id: %claimed_id) found in user account.', array('%identity' => $identity, '%claimed_id' => $result['openid.claimed_id'])));
     }
