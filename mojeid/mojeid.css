@@ -1,0 +1,46 @@
+/* $Id$ */
+
+#edit-mojeid-identifier {
+  background-image: url("img/mojeid_login.png");
+  background-position: 0% 50%;
+  background-repeat: no-repeat;
+  padding-left: 23px;
+  margin:0;
+}
+div#edit-mojeid-identifier-wrapper {
+  display: block;
+}
+html.js #user-login-form div#edit-mojeid-identifier-wrapper,
+html.js #user-login div#edit-mojeid-identifier-wrapper {
+  display: none;
+}
+html.js #user-login-form li.mojeid-link,
+html.js #user-login li.mojeid-link {
+  display : block;
+  list-style: none;
+}
+#user-login-form ul {
+  margin-top: 0;
+}
+#user-login ul {
+  margin: 0 0 5px;
+}
+#user-login ul li {
+  margin: 0;
+}
+#user-login-form li.mojeid-link,
+#user-login-form li.mojeid-user-link,
+#user-login li.mojeid-link,
+#user-login li.mojeid-user-link {
+  display: none;
+}
+#user-login-form li.mojeid-link a,
+#user-login li.mojeid-link a{
+  background-image: url("img/mojeid_small.gif");
+  background-position: 0% 50%;
+  background-repeat: no-repeat;
+  padding: 3px 0 0 24px;
+}
+.mojeid-login-img {
+  display: block;
+}

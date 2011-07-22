@@ -1,0 +1,7 @@
+name = mojeID UC addresses
+description = "mojeID UC addresses"
+package = OpenID
+dependencies[] = mojeid
+dependencies[] = uc_addresses
+dependencies[] = openid_client_ax
+core = 6.x
