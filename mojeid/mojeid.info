@@ -2,6 +2,5 @@ name = mojeID
 description = "mojeID provider integration and branding"
 package = OpenID
 dependency[] = openid
-dependency[] = xrds_simple
 core = 6.x
 
