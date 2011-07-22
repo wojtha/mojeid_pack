@@ -131,7 +131,7 @@ function openid_client_ax_authentication_page() {
 function openid_client_ax_authentication($response) {
   module_load_include('inc', 'openid');
 
-  $identity = isset($response['openid.identity']) ? $response['openid.identity'] : $response['openid.claimed_id'];
+  $identity = $response['openid.claimed_id'];
 
   $account = user_external_load($identity);
   if (isset($account->uid)) {
