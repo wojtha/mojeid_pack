@@ -435,7 +435,9 @@ function mojeid_login_validate($form, &$form_state) {
     $return_to = url('', array('absolute' => TRUE));
   }
 
-  $mojeid = $form_state['values']['mojeid_identifier'] . '.mojeid.cz';
+  // Normalize the input - be nice if someone insert mojeid.cz as a part of the claimed id.
+  $mojeid = trim(str_ireplace('.mojeid.cz', '', $form_state['values']['mojeid_identifier']));
+  $mojeid = $mojeid . '.mojeid.cz';
   //$form_state['values']['openid_identifier'] = $mojeid;
   //form_set_value($form['openid_identifier'], $mojeid, $form_state);
   openid_begin($mojeid, $return_to, $form_state['values']);
