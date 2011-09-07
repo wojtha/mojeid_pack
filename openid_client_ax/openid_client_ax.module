@@ -24,6 +24,11 @@ function openid_client_ax_menu() {
     'page arguments'   => array('openid_client_ax_admin_settings'),
     'access arguments' => array('administer openid client ax'),
   );
+  $items['openid/update'] = array(
+    'page callback' => 'openid_client_ax_update',
+    'access callback' => '_openid_client_ax_access',
+    'type' => MENU_CALLBACK,
+  );
   return $items;
 }
 
@@ -40,12 +45,16 @@ function openid_client_ax_menu_alter(&$callbacks) {
  * Implementation of hook_openid()
  */
 function openid_client_ax_openid($op, $request = array()) {
+  global $locks, $user;
+  $lock_name = 'openid-ax-' . $request['openid.identity'];
+
   // add our information to the request if op is request and we are enabled
   if ($op == 'request') {
     $request = array();
     $ax = variable_get('openid_client_ax_alias', 'ax');
     $request[sprintf('openid.ns.%s', $ax)] = 'http://openid.net/srv/ax/1.0';
     $request[sprintf('openid.%s.mode', $ax)] = 'fetch_request';
+    $request[sprintf('openid.%s.update_url', variable_get('openid_client_ax_alias', 'ax'))] = url('openid/update', array('absolute' => TRUE));
     $short_names = $attributes = array();
     $attributes = module_invoke_all('openid_client', 'get');
     foreach ($attributes as $attrib_url) {
@@ -57,6 +66,20 @@ function openid_client_ax_openid($op, $request = array()) {
     }
     if (count($short_names) > 0) {
       $request[sprintf('openid.%s.if_available', $ax)] = implode(",", $short_names);
+    }
+
+    // Add store request data if applicable
+    if ($locks[$lock_name] && $user->uid) {
+      // Prepare the request
+      $request[sprintf('openid.%s.mode', variable_get('openid_client_ax_alias', 'ax'))] = 'store_request';
+
+      // Add data to the request
+      $attributes_data = module_invoke_all('openid_client', 'load', $request, $user->uid);
+      $request = array_merge($request, $attributes_data);
+      unset($request[sprintf('openid.%s.if_available', variable_get('openid_client_ax_alias', 'ax'))]);
+
+      // Remove our store request indicator
+      lock_release($lock_name);
     }
     return $request;
   }
@@ -74,6 +97,51 @@ function openid_client_ax_attribute_name($uri) {
   $parts = array_filter(explode('/', str_replace('http://', '', $uri)), 'strlen');
   array_shift($parts);
   return implode('_', $parts);
+}
+
+
+/**
+ * Handles unsolicited positive assertion from OPs.
+ */
+function openid_client_ax_store($uid, $return_to) {
+  if ($_GET['q'] == 'openid/authenticate' || $_GET['q'] == 'openid/update') {
+    return;
+  }
+
+  //TODO: Should we handle multiple OPs?
+  $claimed_id = db_result(db_query("SELECT authname FROM {authmap} WHERE module='openid' AND uid=%d LIMIT 1", $uid));
+  // Set a store request indicator
+  $lock_name = 'openid-ax-' . $claimed_id;
+  if (lock_acquire($lock_name)) {
+    openid_begin($claimed_id, $return_to);
+    // We will release the lock in openid_client_ax_openid().
+  }
+}
+
+/**
+ * Handles unsolicited positive assertion from OPs.
+ */
+function openid_client_ax_update() {
+  module_load_include('inc', 'openid', 'openid');
+
+  $response = _openid_response();
+  $account = user_external_load($response['openid.claimed_id']);
+
+  // Make sure if the RP is valid, do Direct Verification.
+  $disco = openid_discovery($response['openid.claimed_id']);
+  //$endpoint = $disco[0]['uri'];
+  $endpoint = array('uri' => $disco[0]['uri'], 'version' => $disco[0]['version']);
+
+  $valid = openid_verify_assertion($endpoint, $response);
+
+  // Ask the OP to stop sending updates
+  if ($valid == FALSE || !$account->uid) {
+    header("HTTP/1.0 404 Not Found");
+    return;
+  }
+
+  // Update the profile data
+  module_invoke_all('openid_client', 'update', $response, $account);
 }
 
 /**
@@ -182,7 +250,9 @@ function openid_client_ax_authentication($response) {
         module_invoke_all('openid_client', 'save', $response, $account);
       }
     }
-    drupal_redirect_form($form, $form_state['redirect']);
+    if (isset($form_state['redirect'])) {
+      drupal_redirect_form($form, $form_state['redirect']);
+    }
   }
   else {
     drupal_set_message(t('Only site administrators can create new user accounts.'), 'error');
@@ -193,9 +263,9 @@ function openid_client_ax_authentication($response) {
 /**
  * Menu callback; Manage OpenID identities for the specified user.
  *
- * Overrides openid_user_identities callback - adding hook_openid_client
+ * Overrides openid_user_identities callback; adds integration with OpenID Client AX via invoking hook_openid_client().
  *
- * @see openid_user_identities
+ * @see openid_user_identities()
  */
 function openid_client_ax_user_identities($account) {
   drupal_set_title(check_plain($account->name));
@@ -249,6 +319,14 @@ function _openid_client_ax_get_multiple_values($response, $attribute, $count = 0
     $counter++;
   }
   return $return;
+}
+
+/**
+ * Allow access to openid AX update URL.
+ * @see hook_menu().
+ */
+function _openid_client_ax_access() {
+  return TRUE;
 }
 
 /**
@@ -652,6 +730,12 @@ function openid_client_ax_schema_definitions() {
     ),
   );
 
-  // hook_openid_ax_schema()
-  return array_merge($attributes, module_invoke_all('openid_ax_schema'));
+  // Invokation of hook_openid_client_ax_schema() and
+  // hook_openid_client_ax_schema_alter() allowing other modules to inject
+  // their elements or modify the defined elements.
+  // @todo: static caching or Drupal DB cache might be needed
+  $attributes = array_merge($attributes, module_invoke_all('openid_client_ax_schema'));
+  drupal_alter('openid_client_ax_schema', $attributes);
+
+  return $attributes;
 }
