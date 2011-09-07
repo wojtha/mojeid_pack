@@ -15,7 +15,7 @@ define('UC_ADDRESS_MOJEID_BILLING', 'mojeID Billing');
 define('UC_ADDRESS_MOJEID_SHIPPING', 'mojeID Shipping');
 
 define('UC_ADDRESS_MOJEID_ADDED', 1);
-define('UC_ADDRESS_MOJEID_MODIFIED', 2);
+define('UC_ADDRESS_MOJEID_UPDATED', 2);
 
 //=============================================================================
 //  DRUPAL HOOKS
@@ -109,8 +109,9 @@ function _mojeid_uc_addresses_openid_client_save($response, $account) {
   $key_map = array_map('openid_client_ax_attribute_name', $mapping);
   $temp_values = mojeid_uc_addresses_get_values($response, array_values($key_map));
   $values = array();
+  // TODO: Iterate through either $key_map or $temp_values?
   foreach ($key_map as $key => $tkey) {
-    $values[$key] = $temp_values[$tkey][0];
+    $values[$key] = !empty($temp_values[$tkey][0]) ? $temp_values[$tkey][0] : '';
   }
 
   if (!empty($values)) {
