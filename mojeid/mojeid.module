@@ -63,15 +63,15 @@ function mojeid_menu() {
 function mojeid_help($path, $arg) {
   switch ($path) {
     case 'user/%/openid':
-      $output = '<p>'. t('This site supports <a href="@moje-id-cz">mojeID</a>, which adds some more features to OpenID protocol.', array('@moje-id-cz' => 'http://mojeid.cz')) .'</p>';
-      $output .= '<p>'. t('If you already have an mojeID, enter the URL to your mojeID server below (e.g. myusername.mojeid.cz). Next time you login, you will be able to use this URL instead of a regular username and password.') .'</p>';
+      $output = '<p>' . t('This site supports <a href="@moje-id-cz">mojeID</a>, which adds some more features to OpenID protocol.', array('@moje-id-cz' => 'http://mojeid.cz')) . '</p>';
+      $output .= '<p>' . t('If you already have an mojeID, enter the URL to your mojeID server below (e.g. myusername.mojeid.cz). Next time you login, you will be able to use this URL instead of a regular username and password.') . '</p>';
       return $output;
 
     case 'admin/help#openid':
-      $output = '<p>'. t('This site supports <a href="@moje-id-cz">mojeID</a>, which adds some more features to OpenID protocol.', array('@moje-id-cz' => 'http://mojeid.cz')) .'</p>';
-      $output .= '<p>'. t('If you already have a mojeID, enter the URL to your mojeID server below (e.g. myusername.mojeid.cz). Next time you login, you will be able to use this URL instead of a regular username and password.') .'</p>';
-      $output .= '<p>'. t('The basic concept of the mojeID usage is the same as with OpenID described above.') .'</p>';
-      $output .= '<p>'. t('More information on mojeID (e.g. how it differs from regular OpenID) is available at <a href="@moje-id-cz">mojeID</a> (the site is in Czech and English).', array('@moje-id-cz' => 'http://mojeid.cz')) .'</p>';
+      $output = '<p>' . t('This site supports <a href="@moje-id-cz">mojeID</a>, which adds some more features to OpenID protocol.', array('@moje-id-cz' => 'http://mojeid.cz')) . '</p>';
+      $output .= '<p>' . t('If you already have a mojeID, enter the URL to your mojeID server below (e.g. myusername.mojeid.cz). Next time you login, you will be able to use this URL instead of a regular username and password.') . '</p>';
+      $output .= '<p>' . t('The basic concept of the mojeID usage is the same as with OpenID described above.') . '</p>';
+      $output .= '<p>' . t('More information on mojeID (e.g. how it differs from regular OpenID) is available at <a href="@moje-id-cz">mojeID</a> (the site is in Czech and English).', array('@moje-id-cz' => 'http://mojeid.cz')) . '</p>';
       return $output;
   }
 }
@@ -81,7 +81,12 @@ function mojeid_help($path, $arg) {
  *
  * Adds OpenID selector to the OpenID forms.
  */
-function mojeid_form_alter(&$form, $form_state, $form_id) {
+function mojeid_form_alter(&$form, &$form_state, $form_id) {
+  if (!in_array($form_id, array('user_login_block', 'user_login', 'user_register', 'openid_user_add'))) {
+    // Skip other forms
+    return;
+  }
+
   global $language;
   $module_path = drupal_get_path('module', 'mojeid');
   $supress_openid = variable_get('mojeid_supress_openid', FALSE);
@@ -109,7 +114,7 @@ function mojeid_form_alter(&$form, $form_state, $form_id) {
       '#field_suffix' => t('.mojeID.cz'),
       '#maxlength' => 255,
       '#weight' => -1,
-      '#description' => l(t('Why MojeID?'), 'http://www.mojeid.cz/page/805/', array('external' => true)) . " " . l(t('Create new MojeID account'), 'http://www.mojeid.cz/page/795/', array('external' => TRUE)),
+      '#description' => l(t('What is MojeID?'), 'http://www.mojeid.cz/page/805/', array('external' => TRUE)) . " " . l(t('Create new MojeID account'), 'http://www.mojeid.cz/page/795/', array('external' => TRUE)),
     );
 
     if ($supress_openid) {
@@ -143,7 +148,7 @@ function mojeid_form_alter(&$form, $form_state, $form_id) {
     );
 
     if (_mojeid_promo_icon_display($form_id)) {
-      if ($icon = mojeid_file_language_variant($module_path .'/img/mojeid_log-in.png')) {
+      if ($icon = mojeid_file_language_variant($module_path . '/img/mojeid_log-in.png')) {
         $form['mojeid_img'] = array(
           '#value' => theme_image($icon, t('MojeID.cz'), t('Supports MojeID authentization'), array('class' => 'mojeid-login-img')),
           '#weight' => ($form_id == 'user_login_block') ? 5 : 3,
@@ -160,7 +165,7 @@ function mojeid_form_alter(&$form, $form_state, $form_id) {
     }
 
     if (_mojeid_promo_icon_display($form_id)) {
-      if ($icon = mojeid_file_language_variant($module_path .'/img/mojeid_log-in.png')) {
+      if ($icon = mojeid_file_language_variant($module_path . '/img/mojeid_log-in.png')) {
         $image = theme_image($icon, t('MojeID.cz'), t('Supports MojeID authentization'), array('class' => 'mojeid-login-img'));
         $form['account']['mojeid_img'] = array(
           '#value' => l($image, 'user', array('html' => TRUE, 'fragment' => 'mojeid')),
@@ -182,7 +187,7 @@ function mojeid_form_alter(&$form, $form_state, $form_id) {
     }
 
     if (_mojeid_promo_icon_display($form_id)) {
-      if ($icon = mojeid_file_language_variant($module_path .'/img/mojeid_powered.png')) {
+      if ($icon = mojeid_file_language_variant($module_path . '/img/mojeid_powered.png')) {
         $form['mojeid_img'] = array(
           '#value' => theme_image($icon, t('MojeID.cz'), t('Supports MojeID authentization'), array('class' => 'mojeid-login-img')),
           '#weight' => -10,
@@ -197,7 +202,7 @@ function mojeid_form_alter(&$form, $form_state, $form_id) {
       '#field_suffix' => t('.mojeID.cz'),
       '#maxlength' => 255,
       '#weight' => -1,
-      '#description' => l(t('Why mojeID?'), 'http://www.mojeid.cz/page/805/', array('external' => true)) . " " . l(t('Create new mojeID account'), 'http://www.mojeid.cz/page/795/', array('external' => TRUE)) . '.',
+      '#description' => l(t('Why mojeID?'), 'http://www.mojeid.cz/page/805/', array('external' => TRUE)) . " " . l(t('Create new mojeID account'), 'http://www.mojeid.cz/page/795/', array('external' => TRUE)) . '.',
     );
   }
 }
@@ -236,7 +241,7 @@ function mojeid_xrds_page() {
   <XRD>
     <Service>
       <Type>http://specs.openid.net/auth/2.0/return_to</Type>
-      <URI>". url('', array('absolute' => TRUE)) ."</URI>
+      <URI>" . url('', array('absolute' => TRUE)) . "</URI>
     </Service>
   </XRD>
 </xrds:XRDS>";
@@ -395,7 +400,7 @@ function mojeid_file_language_variant($file, $language = NULL) {
   // try if file filename.<ISO-2-LANGCODE>.ext exists
   $start = strrpos($file, '.');
   if ($start !== FALSE) {
-    $lang_file = substr_replace($file, '.'. $language->language, $start, 0);
+    $lang_file = substr_replace($file, '.' . $language->language, $start, 0);
   }
 
   // file exists in version for given language
@@ -438,8 +443,6 @@ function mojeid_login_validate($form, &$form_state) {
   // Normalize the input - be nice if someone insert mojeid.cz as a part of the claimed id.
   $mojeid = trim(str_ireplace('.mojeid.cz', '', $form_state['values']['mojeid_identifier']));
   $mojeid = $mojeid . '.mojeid.cz';
-  //$form_state['values']['openid_identifier'] = $mojeid;
-  //form_set_value($form['openid_identifier'], $mojeid, $form_state);
   openid_begin($mojeid, $return_to, $form_state['values']);
 
   // assign OpenID errors to the MojeID field
@@ -486,7 +489,7 @@ function mojeid_openid_user_add_validate($form, &$form_state) {
  */
 function mojeid_openid_user_add_submit($form, &$form_state) {
   $form_state['values']['openid_identifier'] = $form_state['values']['mojeid_identifier'] . '.mojeid.cz';
-  $return_to = url('user/'. arg(1) .'/openid', array('absolute' => TRUE));
+  $return_to = url('user/' . arg(1) . '/openid', array('absolute' => TRUE));
   openid_begin($form_state['values']['openid_identifier'], $return_to);
   _mojeid_repair_form_errors($form_state);
 }
@@ -564,10 +567,12 @@ function mojeid_admin_settings($form_state) {
  * @see mojeid_admin_settings()
  */
 function mojeid_admin_settings_validate($form, &$form_state) {
-  $form_state['values']['mojeid_required'];
-  $flattened = array();
-  foreach ($form_state['values']['mojeid_required'] as $section) {
-    $flattened += $section;
+  if (isset($form_state['values']['mojeid_required']) && is_array($form_state['values']['mojeid_required'])) {
+    $flattened = array();
+    foreach ($form_state['values']['mojeid_required'] as $section) {
+      $flattened += $section;
+    }
+    $form_state['values']['mojeid_required'] = $flattened;
   }
   $form_state['values']['mojeid_required'] = $flattened;
 }
