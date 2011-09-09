@@ -1,17 +1,16 @@
-/* $Id$ */
 
 #edit-mojeid-identifier {
   background-image: url("img/mojeid_login.png");
-  background-position: 0% 50%;
+  background-position: 0% 50%; /* LTR */
   background-repeat: no-repeat;
-  padding-left: 23px;
+  padding-left: 23px; /* LTR */
   margin:0;
 }
 div#edit-mojeid-identifier-wrapper {
   display: block;
 }
-html.js #user-login-form div#edit-mojeid-identifier-wrapper,
-html.js #user-login div#edit-mojeid-identifier-wrapper {
+html.js #user-login-form div.form-item-mojeid-identifier,
+html.js #user-login div.form-item-mojeid-identifier {
   display: none;
 }
 html.js #user-login-form li.mojeid-link,
