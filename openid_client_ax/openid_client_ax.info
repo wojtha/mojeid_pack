@@ -1,7 +1,0 @@
-name = OpenID Client Attribute Exchange
-description = Provides the ability to do attribute exchange for the openid client
-version = "6.x"
-core = 6.x
-dependencies[] = openid
-package = "OpenID"
-
