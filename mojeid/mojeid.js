@@ -12,14 +12,15 @@ Drupal.behaviors.mojeid = {
       if (cookie) {
         $('#edit-mojeid-identifier').val(cookie);
       }
-      if ($('#edit-mojeid-identifier').val()) {
+      if ($('#edit-mojeid-identifier').val() || location.hash == '#mojeid-login') {
         $('#edit-mojeid-identifier').addClass('mojeid-processed');
         $loginElements.hide();
         // Use .css('display', 'block') instead of .show() to be Konqueror friendly.
         $mojeIdElements.css('display', 'block');
       }
     }
-    $('li.mojeid-link:not(.mojeid-processed)', context)
+
+    $('li.mojeid-link, img.mojeid-login-img', context).not('.mojeid-processed')
       .addClass('mojeid-processed')
       .click( function() {
         $loginElements.hide();
@@ -31,6 +32,9 @@ Drupal.behaviors.mojeid = {
         $('#edit-mojeid-identifier')[0].focus();
         return false;
       });
+
+    $('img.mojeid-login-img').css('cursor', 'pointer');
+
     $('li.mojeid-user-link:not(.mojeid-processed)', context)
       .addClass('mojeid-processed')
       .click(function() {
@@ -43,12 +47,14 @@ Drupal.behaviors.mojeid = {
         $('#edit-name')[0].focus();
         return false;
       });
+
     $('li.openid-link:not(.mojeid-processed)', context)
       .addClass('mojeid-processed')
       .click( function() {
         $('li.mojeid-link').hide();
         return false;
       });
+
     $('li.user-link:not(.mojeid-processed)', context)
       .addClass('mojeid-processed')
       .click(function() {
