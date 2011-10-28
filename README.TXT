@@ -23,6 +23,10 @@ a http://drupal.org/node/1120290
 
 ZMĚNY
 
+2011-10-28 6.x-1.0-beta2
+ - Oprava chyby v mojeID modulu http://drupal.org/node/1253464 
+ - Refaktoring
+
 2011-09-07 6.x-1.0-beta1
  - Pro úspěšné přihlášení je možné vložit i ".mojeid.cz"
  - Oprava chyb v mojeID UC Addresses

@@ -9,7 +9,9 @@
  *
  * @author Vojtech Kusy - http://vojtechkusy.com/
  *
- * Development partly sponsored by NIC.CZ - http://www.nic.cz/
+ * CREDITS
+ *  - Initial development sponsored by NIC.CZ - http://www.nic.cz/
+ *  - Developed by Ants! - http://atomicant.co.uk/
  */
 
 //=============================================================================
@@ -36,24 +38,23 @@ function mojeid_menu() {
     'page callback' => 'drupal_get_form',
     'page arguments' => array('mojeid_admin_settings'),
     'access arguments' => array('administer mojeid'),
+    'file' => 'mojeid.admin.inc',
   );
 
   $items['admin/settings/mojeid/settings'] = array(
     'title' => 'Settings',
-    'page callback' => 'drupal_get_form',
-    'page arguments' => array('mojeid_admin_settings'),
-    'access arguments' => array('administer mojeid'),
     'type' => MENU_DEFAULT_LOCAL_TASK,
     'weight' => -2,
   );
 
-  // or alternatively we could use xrds_simple.module
   $items['openid/xrds.xml'] = array(
     'title' => 'OpenID XRDS',
     'page callback' => 'mojeid_xrds_page',
     'access arguments' => array('access content'),
     'type' => MENU_CALLBACK,
+    'file' => 'mojeid.inc',
   );
+
   return $items;
 }
 
@@ -87,132 +88,69 @@ function mojeid_form_alter(&$form, &$form_state, $form_id) {
     return;
   }
 
-  global $language;
-  $module_path = drupal_get_path('module', 'mojeid');
-  $supress_openid = variable_get('mojeid_supress_openid', FALSE);
+  module_load_include('inc', 'mojeid');
+  _mojeid_form_alter($form, $form_state, $form_id);
+}
 
-  // load additional CSS and JS on these forms
-  if (in_array($form_id, array('user_login_block', 'user_login', 'openid_user_add'))) {
-    drupal_add_js($module_path . '/mojeid.js');
-    drupal_add_css($module_path . '/mojeid.css', 'module');
-  }
+/**
+ * Implementation of hook_openid()
+ */
+function mojeid_openid($op, $request = array()) {
+  // Add our information to the request if op is request and we are enabled.
+  if ($op == 'request') {
+    if (strpos($request['openid.identity'], 'mojeid.cz') !== FALSE) {
+      // authentization policy
+      $request['openid.ns.pape'] = 'http://specs.openid.net/extensions/pape/1.0';
+      // max age of the last autentization
+      $request['openid.pape.max_auth_age'] = 3600;
+      // see http://schemas.openid.net/pape/policies/2007/06/phishing-resistant
+      $request['openid.pape.preferred_auth_policies'] = '';
 
-  if (in_array($form_id, array('user_login_block', 'user_login'))) {
-    drupal_set_html_head('<meta http-equiv="x-xrds-location" content="' . url('openid/xrds.xml', array('absolute' => TRUE)) . '" />');
+      //$request['openid.claimed_id'] = 'http://specs.openid.net/auth/2.0/identifier_select';
 
-    if (!empty($form_state['post']['mojeid_identifier'])) {
-      $form['name']['#required'] = FALSE;
-      $form['pass']['#required'] = FALSE;
-      unset($form['#submit']);
-      $form['#validate'] = array('mojeid_login_validate');
-    }
-
-    $form['mojeid_identifier'] = array(
-      '#type' => 'textfield',
-      '#title' => t('Log in using MojeID'),
-      '#size' => ($form_id == 'user_login') ? 38 : 8,
-      '#field_suffix' => t('.mojeID.cz'),
-      '#maxlength' => 255,
-      '#weight' => -1,
-      '#description' => l(t('What is MojeID?'), 'http://www.mojeid.cz/page/805/', array('external' => TRUE)) . " " . l(t('Create new MojeID account'), 'http://www.mojeid.cz/page/795/', array('external' => TRUE)),
-    );
-
-    if ($supress_openid) {
-      $form['openid_identifier']['#type'] = 'hidden';
-    }
-
-    $items = array();
-    $items[] = array(
-      'data' => l(t('Log in using MojeID'), '#'),
-      'class' => 'mojeid-link',
-    );
-
-    if (!$supress_openid) {
-      $items[] = array(
-        'data' => l(t('Log in using OpenID'), '#'),
-        'class' => 'openid-link',
-      );
-      $items[] = array(
-        'data' => l(t('Cancel OpenID login'), '#'),
-        'class' => 'user-link',
-      );
-    }
-
-    $items[] = array(
-      'data' => l(t('Cancel MojeID login'), '#'),
-      'class' => 'mojeid-user-link',
-    );
-    $form['openid_links'] = array(
-      '#value' => theme('item_list', $items),
-      '#weight' => 1,
-    );
-
-    if (_mojeid_promo_icon_display($form_id)) {
-      if ($icon = mojeid_file_language_variant($module_path . '/img/mojeid_log-in.png')) {
-        $form['mojeid_img'] = array(
-          '#value' => theme_image($icon, t('MojeID.cz'), t('Supports MojeID authentization'), array('class' => 'mojeid-login-img')),
-          '#weight' => ($form_id == 'user_login_block') ? 5 : 3,
-        );
+      // Add required AX elements
+      if (module_exists('openid_client_ax')) {
+        $ax = variable_get('openid_client_ax_alias', 'ax');
+        $required = array_filter(variable_get('mojeid_required', array()));
+        foreach ($required as $required_key => $required_element) {
+          // Remove required elements which aren't used in the request
+          $ax_element = sprintf('openid.%s.type.%s', $ax, $required_element);
+          if (empty($request[$ax_element])) {
+            unset($required[$required_key]);
+          }
+        }
+        if (!empty($required)) {
+          $request[sprintf('openid.%s.required', $ax)] = implode(',', $required);
+        }
       }
+
+      return $request;
     }
-
-  }
-  elseif ($form_id == 'user_register') {
-
-    if (isset($_SESSION['openid']['values']) && mojeid_openid_is_mojeid($_SESSION['openid']['values']['auth_openid'])) {
-      $form['openid_display']['#title'] = t('Your MojeID');
-      $form['openid_display']['#description'] = t('This MojeID will be attached to your account after registration.');
-    }
-
-    if (_mojeid_promo_icon_display($form_id)) {
-      if ($icon = mojeid_file_language_variant($module_path . '/img/mojeid_log-in.png')) {
-        $image = theme_image($icon, t('MojeID.cz'), t('Supports MojeID authentization'), array('class' => 'mojeid-login-img'));
-        $form['account']['mojeid_img'] = array(
-          '#value' => l($image, 'user', array('html' => TRUE, 'fragment' => 'mojeid')),
-          '#weight' => 1,
-        );
-      }
-    }
-
-  }
-  elseif ($form_id == 'openid_user_add') {
-
-    if (!empty($form_state['post']['mojeid_identifier'])) {
-      $form['#validate'] = array('mojeid_openid_user_add_validate');
-      $form['#submit'] = array('mojeid_openid_user_add_submit');
-    }
-
-    if ($supress_openid) {
-      $form['openid_identifier']['#type'] = 'hidden';
-    }
-
-    if (_mojeid_promo_icon_display($form_id)) {
-      if ($icon = mojeid_file_language_variant($module_path . '/img/mojeid_powered.png')) {
-        $form['mojeid_img'] = array(
-          '#value' => theme_image($icon, t('MojeID.cz'), t('Supports MojeID authentization'), array('class' => 'mojeid-login-img')),
-          '#weight' => -10,
-        );
-      }
-    }
-
-    $form['mojeid_identifier'] = array(
-      '#type' => 'textfield',
-      '#title' => t('mojeID'),
-      '#size' => 38,
-      '#field_suffix' => t('.mojeID.cz'),
-      '#maxlength' => 255,
-      '#weight' => -1,
-      '#description' => l(t('Why mojeID?'), 'http://www.mojeid.cz/page/805/', array('external' => TRUE)) . " " . l(t('Create new mojeID account'), 'http://www.mojeid.cz/page/795/', array('external' => TRUE)) . '.',
-    );
   }
 }
 
 /**
- * Implementation of hook_xrds()
+ * Implementation of hook_openid_ax_schema(); OpenID Client AX mdoule.
  *
- * Return a XRDS for Attribute Exchange service discovery
+ * Create an array containing the MojeID identifiers NOT listed in AX
+ * http://www.axschema.org/types/
+ *
+ * Similar to openid_client_ax_schema_definitions()
+ *
+ * @return
+ *   Array containing the schema definitions
  */
-function mojeid_xrds($account = NULL) {
+function mojeid_openid_client_ax_schema() {
+  module_load_include('inc', 'mojeid');
+  return _mojeid_openid_client_ax_schema();
+}
+
+/**
+ * Implementation of hook_xrds(); Simple XRDS module.
+ *
+ * Return a XRDS for Attribute Exchange service discovery.
+ */
+/*function mojeid_xrds($account = NULL) {
   $xrds = array();
   $xrds['mojeid'] = array(
     'services' => array(
@@ -227,357 +165,5 @@ function mojeid_xrds($account = NULL) {
   );
 
   return $xrds;
-}
+}*/
 
-/**
- * Menu callback returns XRDC.XML with domain URI
- *
- * Or alternatively we could use xrds_simple.module
- */
-function mojeid_xrds_page() {
-  drupal_set_header('Content-Type: application/xml; charset=utf-8');
-  print "<?xml version=\"1.0\" encoding=\"UTF-8\"?>
-<xrds:XRDS xmlns:xrds=\"xri://\$xrds\" xmlns=\"xri://\$xrd*(\$v*2.0)\">
-  <XRD>
-    <Service>
-      <Type>http://specs.openid.net/auth/2.0/return_to</Type>
-      <URI>" . url('', array('absolute' => TRUE)) . "</URI>
-    </Service>
-  </XRD>
-</xrds:XRDS>";
-  exit();
-}
-
-/**
- * Implementation of hook_openid()
- */
-function mojeid_openid($op, $request = array()) {
-   // add our information to the request if op is request and we are enabled
-  if ($op == 'request') {
-    if (strpos($request['openid.identity'], 'mojeid.cz') !== FALSE) {
-      // authentization policy
-      $request['openid.ns.pape'] = 'http://specs.openid.net/extensions/pape/1.0';
-      // max age of the last autentization
-      $request['openid.pape.max_auth_age'] = 3600;
-      // see http://schemas.openid.net/pape/policies/2007/06/phishing-resistant
-      $request['openid.pape.preferred_auth_policies'] = '';
-      $required = array_filter(variable_get('mojeid_required', array()));
-      if (!empty($required)) {
-        $request['openid.ax.required'] = implode(',', $required);
-      }
-      //$request['openid.claimed_id'] = 'http://specs.openid.net/auth/2.0/identifier_select';
-      return $request;
-    }
-  }
-}
-
-/**
- * Create an array containing the MojeID identifiers NOT listed in AX
- * http://www.axschema.org/types/
- *
- * Implementation of hook_openid_ax_schema().
- *
- * Similar to openid_client_ax_schema_definitions()
- *
- * @return
- *   Array containing the schema definitions
- */
-function mojeid_openid_client_ax_schema() {
-  module_load_include('inc', 'mojeid');
-  return _mojeid_openid_client_ax_schema();
-}
-
-//=============================================================================
-//  MODULE FUNCTIONS
-//=============================================================================
-
-function mojeid_openid_is_mojeid($openid) {
-  return (strcmp('.mojeid.cz', substr(trim($openid, " /"), -10)) == 0) ? TRUE : FALSE;
-}
-
-/**
- * Checks if the element is from the set of mojeID's supported elements.
- *
- * @param string $uri
- */
-function mojeid_is_supported_element($uri) {
-  $elements = mojeid_supported_elements();
-  return in_array($uri, $elements);
-}
-
-/**
- * List of supported elements identifiers by the mojeID.cz provider.
- */
-function mojeid_supported_elements() {
-  return array(
-    'http://axschema.org/namePerson',
-    'http://axschema.org/namePerson/first',
-    'http://axschema.org/namePerson/last',
-    'http://axschema.org/namePerson/friendly',
-    'http://axschema.org/company/name',
-    'http://axschema.org/contact/postalAddress/home',
-    'http://axschema.org/contact/postalAddressAdditional/home',
-    'http://specs.nic.cz/attr/addr/main/street3',
-    'http://axschema.org/contact/city/home',
-    'http://axschema.org/contact/state/home',
-    'http://axschema.org/contact/country/home',
-    'http://axschema.org/contact/postalCode/home',
-    'http://specs.nic.cz/attr/addr/bill/street',
-    'http://specs.nic.cz/attr/addr/bill/street2',
-    'http://specs.nic.cz/attr/addr/bill/street3',
-    'http://specs.nic.cz/attr/addr/bill/city',
-    'http://specs.nic.cz/attr/addr/bill/sp',
-    'http://specs.nic.cz/attr/addr/bill/cc',
-    'http://specs.nic.cz/attr/addr/bill/pc',
-    'http://specs.nic.cz/attr/addr/ship/street',
-    'http://specs.nic.cz/attr/addr/ship/street2',
-    'http://specs.nic.cz/attr/addr/ship/street3',
-    'http://specs.nic.cz/attr/addr/ship/city',
-    'http://specs.nic.cz/attr/addr/ship/sp',
-    'http://specs.nic.cz/attr/addr/ship/cc',
-    'http://specs.nic.cz/attr/addr/ship/pc',
-    'http://specs.nic.cz/attr/addr/mail/street',
-    'http://specs.nic.cz/attr/addr/mail/street2',
-    'http://specs.nic.cz/attr/addr/mail/street3',
-    'http://specs.nic.cz/attr/addr/mail/city',
-    'http://specs.nic.cz/attr/addr/mail/sp',
-    'http://specs.nic.cz/attr/addr/mail/cc',
-    'http://specs.nic.cz/attr/addr/mail/pc',
-    'http://axschema.org/contact/phone/default',
-    'http://axschema.org/contact/phone/home',
-    'http://axschema.org/contact/phone/business',
-    'http://axschema.org/contact/phone/cell',
-    'http://axschema.org/contact/phone/fax',
-    'http://axschema.org/contact/email',
-    'http://specs.nic.cz/attr/email/notify',
-    'http://specs.nic.cz/attr/email/next',
-    'http://axschema.org/contact/web/default',
-    'http://axschema.org/contact/web/blog',
-    'http://specs.nic.cz/attr/url/personal',
-    'http://specs.nic.cz/attr/url/work',
-    'http://specs.nic.cz/attr/url/rss',
-    'http://specs.nic.cz/attr/url/facebook',
-    'http://specs.nic.cz/attr/url/twitter',
-    'http://specs.nic.cz/attr/url/linkedin',
-    'http://axschema.org/contact/IM/ICQ',
-    'http://axschema.org/contact/IM/Jabber',
-    'http://axschema.org/contact/IM/Skype',
-    'http://specs.nic.cz/attr/im/google_talk',
-    'http://specs.nic.cz/attr/im/windows_live',
-    'http://specs.nic.cz/attr/contact/ident/vat_id',
-    'http://specs.nic.cz/attr/contact/vat',
-    'http://specs.nic.cz/attr/contact/ident/card',
-    'http://specs.nic.cz/attr/contact/ident/pass',
-    'http://specs.nic.cz/attr/contact/ident/ssn',
-    'http://specs.nic.cz/attr/contact/student',
-    'http://specs.nic.cz/attr/contact/valid',
-    'http://specs.nic.cz/attr/contact/adult',
-    'http://specs.nic.cz/attr/contact/image',
-  );
-}
-
-/**
- * Checks if file exists for given language variant. It searches for files with
- * ISO-2 langcode injected before file extension.
- *
- * Example:
- *   "mojeid_icon.jpg" returns "mojeid_icon.cs.jpg" if Czech is given language
- *
- * @param string $file
- * @param object $language
- *   Optional Drupal language object, defaults to current global language
- *
- * @return string|FALSE
- *   A filepath to language based file variant or original file or FALSE if no file exists
- */
-function mojeid_file_language_variant($file, $language = NULL) {
-  $return = $lang_file = FALSE;
-
-  if (is_null($language)) {
-    $language = $GLOBALS['language'];
-  }
-
-  // try if file filename.<ISO-2-LANGCODE>.ext exists
-  $start = strrpos($file, '.');
-  if ($start !== FALSE) {
-    $lang_file = substr_replace($file, '.' . $language->language, $start, 0);
-  }
-
-  // file exists in version for given language
-  if ($lang_file && file_exists($lang_file)) {
-    $return = $lang_file;
-  }
-  // fallback
-  elseif (file_exists($file)) {
-    $return = $file;
-  }
-
-  return $return;
-}
-
-/**
- * Check if icon could be displayed on the given form
- *
- * @param string $form_id
- *
- * @returns boolean
- */
-function _mojeid_promo_icon_display($form_id) {
-  $forms = variable_get('mojeid_promo_icons', array());
-  return !empty($forms[$form_id]);
-}
-
-//=============================================================================
-//  FORMS AND FORM HANDLERS
-//=============================================================================
-
-/**
- * Login form_validate handler; overrides openid_login_validate().
- */
-function mojeid_login_validate($form, &$form_state) {
-  $return_to = $form_state['values']['openid.return_to'];
-  if (empty($return_to)) {
-    $return_to = url('', array('absolute' => TRUE));
-  }
-
-  // Normalize the input - be nice if someone insert mojeid.cz as a part of the claimed id.
-  $mojeid = trim(str_ireplace('.mojeid.cz', '', $form_state['values']['mojeid_identifier']));
-  $mojeid = $mojeid . '.mojeid.cz';
-  openid_begin($mojeid, $return_to, $form_state['values']);
-
-  // assign OpenID errors to the MojeID field
-  _mojeid_repair_form_errors($form_state);
-}
-
-/**
- * Handle openid/mojeid errors in mojeid forms
- */
-function _mojeid_repair_form_errors($form_state) {
-  $form_errors = form_get_errors();
-  if (isset($form_errors['openid_identifier']) && !empty($form_state['values']['mojeid_identifier'])) {
-    $messages = drupal_get_messages('error', FALSE);
-    $openid_error = $form_errors['openid_identifier'];
-
-    // clear error messages
-    drupal_get_messages('error', TRUE);
-    $idx = array_search($openid_error, $messages['error']);
-    unset($messages['error'][$idx]);
-    foreach ($messages['error'] as $msg) {
-      // re-add all messages
-      drupal_set_message('error', $msg);
-    }
-    // set MojeID error
-    $openid_error = t('Sorry, that is not a valid MojeID. Please ensure you have spelled your ID correctly.');
-    form_set_error('mojeid_identifier', $openid_error, TRUE);
-  }
-}
-
-/**
- * Openid add form_validate handler; overrides user_add_validate().
- */
-function mojeid_openid_user_add_validate($form, &$form_state) {
-  $form_state['values']['openid_identifier'] = $form_state['values']['mojeid_identifier'] . '.mojeid.cz';
-  // Check for existing entries.
-  $claimed_id = _openid_normalize($form_state['values']['openid_identifier']);
-  if (db_result(db_query("SELECT authname FROM {authmap} WHERE authname='%s'", $claimed_id))) {
-    form_set_error('mojeid_identifier', t('That OpenID is already in use on this site.'));
-  }
-}
-
-/**
- * Openid add form_submit handler; overrides user_add_submit().
- */
-function mojeid_openid_user_add_submit($form, &$form_state) {
-  $form_state['values']['openid_identifier'] = $form_state['values']['mojeid_identifier'] . '.mojeid.cz';
-  $return_to = url('user/' . arg(1) . '/openid', array('absolute' => TRUE));
-  openid_begin($form_state['values']['openid_identifier'], $return_to);
-  _mojeid_repair_form_errors($form_state);
-}
-
-/**
- * Menu callback; mojeID admin settings form.
- */
-function mojeid_admin_settings($form_state) {
-  $form = array();
-
-  $form['mojeid_supress_openid'] = array(
-    '#type' => 'checkbox',
-    '#title' => t('Supress OpenID'),
-    '#description' => t('Suppress general usage of OpenID on this site, only mojeID will be allowed.'),
-    '#default_value' => variable_get('mojeid_supress_openid', FALSE),
-  );
-
-  $form['mojeid_promo_icons'] = array(
-    '#type' => 'checkboxes',
-    '#title' => t('Promote mojeID'),
-    '#options' => array(
-      'user_login_block' => t('User login block'),
-      'user_login' => t('User login form'),
-      'user_register' => t('User register form'),
-      'openid_user_add' => t('OpenID form under user account'),
-    ),
-    '#default_value' => variable_get('mojeid_promo_icons', array()),
-    '#description' => t('Display Powered by mojeID or mojeID Login banners on the checked forms.'),
-  );
-
-  if (module_exists('openid_client_ax')) {
-    $schema = openid_client_ax_schema_definitions();
-    $supported_elements = mojeid_supported_elements();
-    foreach ($supported_elements as $uri) {
-      if (isset($schema[$uri])) {
-        $short_name = openid_client_ax_attribute_name($uri);
-        $section = $schema[$uri]['section'];
-        $options[$section][$short_name] = $schema[$uri]['label'] . ' <small>(' . $uri . ')</small>';
-      }
-      else {
-        drupal_set_message(t("Element %uri should be supported but it wasn't found in the schema definition.", array('%uri' => $uri)), 'error');
-      }
-    }
-
-    $form['advanced'] = array(
-      '#type' => 'fieldset',
-      '#title' => t('Advanced settings'),
-      '#collapsible' => TRUE,
-      '#collapsed' => TRUE,
-    );
-
-    $form['advanced']['mojeid_required'] = array(
-      '#type' => 'fieldset',
-      '#title' => t('mojeID required attributes'),
-      '#description' => t('Checked mojeID attributes will be required when user is loging-in. Do it only if you really need it.'),
-      '#tree' => TRUE
-    );
-
-    foreach ($options as $section => $section_options) {
-      $form['advanced']['mojeid_required'][] = array(
-        '#type' => 'checkboxes',
-        '#title' => t('Section @section', array('@section' => $section)),
-        '#options' => $section_options,
-        '#default_value' => variable_get('mojeid_required', array()),
-      );
-    }
-  }
-
-  return system_settings_form($form);
-}
-
-/**
- * Validation handler for the mojeID admin settings form.
- *
- * @see mojeid_admin_settings()
- */
-function mojeid_admin_settings_validate($form, &$form_state) {
-  if (isset($form_state['values']['mojeid_required']) && is_array($form_state['values']['mojeid_required'])) {
-    $flattened = array();
-    foreach ($form_state['values']['mojeid_required'] as $section) {
-      $flattened += $section;
-    }
-    $form_state['values']['mojeid_required'] = $flattened;
-  }
-  $form_state['values']['mojeid_required'] = $flattened;
-}
-
-
-//=============================================================================
-//  DEPRECATED
-//=============================================================================
