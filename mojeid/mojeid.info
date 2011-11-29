@@ -1,6 +1,6 @@
 name = mojeID
 description = "mojeID provider integration and branding"
 package = OpenID
-dependency[] = openid
+dependencies[] = openid
 core = 6.x
 
