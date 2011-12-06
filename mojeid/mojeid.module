@@ -99,7 +99,7 @@ function mojeid_openid($op, $request = array()) {
   // Add our information to the request if op is request and we are enabled.
   if ($op == 'request') {
     if (strpos($request['openid.identity'], 'mojeid.cz') !== FALSE) {
-      // authentization policy
+      // authentication policy
       $request['openid.ns.pape'] = 'http://specs.openid.net/extensions/pape/1.0';
       // max age of the last autentization
       $request['openid.pape.max_auth_age'] = 3600;
