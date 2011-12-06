@@ -100,7 +100,7 @@ function _mojeid_form_alter(&$form, &$form_state, $form_id) {
     if (_mojeid_promo_icon_display($form_id)) {
       if ($icon = mojeid_file_language_variant($module_path . '/img/mojeid_log-in.png')) {
         $form['mojeid_img'] = array(
-          '#value' => theme_image($icon, t('mojeID.cz'), t('Supports mojeID authentization'), array('class' => 'mojeid-login-img')),
+          '#value' => theme_image($icon, t('mojeID.cz'), t('Supports mojeID authentication'), array('class' => 'mojeid-login-img')),
           '#weight' => ($form_id == 'user_login_block') ? 5 : 3,
         );
       }
@@ -116,7 +116,7 @@ function _mojeid_form_alter(&$form, &$form_state, $form_id) {
 
     if (_mojeid_promo_icon_display($form_id)) {
       if ($icon = mojeid_file_language_variant($module_path . '/img/mojeid_log-in.png')) {
-        $image = theme_image($icon, t('mojeID.cz'), t('Supports mojeID authentization'), array('class' => 'mojeid-login-img'));
+        $image = theme_image($icon, t('mojeID.cz'), t('Supports mojeID authentication'), array('class' => 'mojeid-login-img'));
         $form['account']['mojeid_img'] = array(
           '#value' => l($image, 'user', array('html' => TRUE, 'fragment' => 'mojeid')),
           '#weight' => 1,
@@ -139,7 +139,7 @@ function _mojeid_form_alter(&$form, &$form_state, $form_id) {
     if (_mojeid_promo_icon_display($form_id)) {
       if ($icon = mojeid_file_language_variant($module_path . '/img/mojeid_powered.png')) {
         $form['mojeid_img'] = array(
-          '#value' => theme_image($icon, t('mojeID.cz'), t('Supports mojeID authentization'), array('class' => 'mojeid-login-img')),
+          '#value' => theme_image($icon, t('mojeID.cz'), t('Supports mojeID authentication'), array('class' => 'mojeid-login-img')),
           '#weight' => -10,
         );
       }
