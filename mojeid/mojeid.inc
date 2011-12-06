@@ -717,7 +717,7 @@ function _mojeid_openid_client_ax_schema() {
       //'identifier'  => 91,
       'identifier'  => 234,
       'label'       => t('Passport'),
-      'description' => t('Passport  ID number'),
+      'description' => t('Passport ID number'),
       'type'        => 'http://www.w3.org/2001/XMLSchema#normalizedString',
       'section'     => t('Identifiers'),
       'provider'    => 'mojeID',
