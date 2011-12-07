@@ -110,7 +110,7 @@ function _mojeid_form_alter(&$form, &$form_state, $form_id) {
     if (_mojeid_promo_icon_display($form_id)) {
       if ($icon = mojeid_file_language_variant($module_path . '/img/mojeid_log-in.png')) {
         $form['mojeid_img'] = array(
-          '#markup' => theme('image', array('path' => $icon, 'alt' => t('mojeID.cz'), 'title' => t('Supports mojeID authentization'), 'attributes' => array('class' => 'mojeid-login-img'))),
+          '#markup' => theme('image', array('path' => $icon, 'alt' => t('mojeID.cz'), 'title' => t('Supports mojeID authentication'), 'attributes' => array('class' => 'mojeid-login-img'))),
           '#weight' => ($form_id == 'user_login_block') ? 5 : 3,
         );
       }
@@ -126,7 +126,7 @@ function _mojeid_form_alter(&$form, &$form_state, $form_id) {
 
     if (_mojeid_promo_icon_display($form_id)) {
       if ($icon = mojeid_file_language_variant($module_path . '/img/mojeid_log-in.png')) {
-        $image = theme('image', array('path' => $icon, 'alt' => t('mojeID.cz'), 'title' => t('Supports mojeID authentization'), 'attributes' => array('class' => 'mojeid-login-img')));
+        $image = theme('image', array('path' => $icon, 'alt' => t('mojeID.cz'), 'title' => t('Supports mojeID authentication'), 'attributes' => array('class' => 'mojeid-login-img')));
         $form['account']['mojeid_img'] = array(
           '#markup' => l($image, 'user', array('html' => TRUE, 'fragment' => 'mojeid')),
           '#weight' => 1,
@@ -149,7 +149,7 @@ function _mojeid_form_alter(&$form, &$form_state, $form_id) {
     if (_mojeid_promo_icon_display($form_id)) {
       if ($icon = mojeid_file_language_variant($module_path . '/img/mojeid_powered.png')) {
         $form['mojeid_img'] = array(
-          '#markup' => theme('image', array('path' => $icon, 'alt' => t('mojeID.cz'), 'title' => t('Supports MojeID authentization'), 'attributes' => array('class' => 'mojeid-login-img'))),
+          '#markup' => theme('image', array('path' => $icon, 'alt' => t('mojeID.cz'), 'title' => t('Supports MojeID authentication'), 'attributes' => array('class' => 'mojeid-login-img'))),
           '#weight' => -10,
         );
       }

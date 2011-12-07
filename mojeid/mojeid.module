@@ -69,7 +69,7 @@ function mojeid_help($path, $arg) {
   switch ($path) {
     case 'user/%/openid':
       $output = '<p>' . t('This site supports <a href="@moje-id-cz">mojeID</a>, which adds some more features to OpenID protocol.', array('@moje-id-cz' => 'http://mojeid.cz')) . '</p>';
-      $output .= '<p>' . t('If you already have an mojeID, enter the URL to your mojeID server below (e.g. myusername.mojeid.cz). Next time you login, you will be able to use this URL instead of a regular username and password.') . '</p>';
+      $output .= '<p>' . t('If you already have a mojeID, enter the URL to your mojeID server below (e.g. myusername.mojeid.cz). Next time you login, you will be able to use this URL instead of a regular username and password.') . '</p>';
       return $output;
 
     case 'admin/help#openid':
@@ -103,7 +103,7 @@ function mojeid_openid($op, $request = array()) {
   // Add our information to the request if op is request and we are enabled.
   if ($op == 'request') {
     if (strpos($request['openid.identity'], 'mojeid.cz') !== FALSE) {
-      // authentization policy
+      // authentication policy
       $request['openid.ns.pape'] = 'http://specs.openid.net/extensions/pape/1.0';
       // max age of the last autentization
       $request['openid.pape.max_auth_age'] = 3600;
