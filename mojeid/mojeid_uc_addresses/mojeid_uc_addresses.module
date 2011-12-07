@@ -43,11 +43,13 @@ function mojeid_uc_addresses_menu() {
  * Implementation of hook_form_alter().
  */
 function mojeid_uc_addresses_form_alter(&$form, $form_state, $form_id) {
-  // prevent user from editing the openid address name
   if ($form_id == 'uc_addresses_get_address_form') {
-    if (in_array($form['panes']['address']['address_name']['#default_value'], array(UC_ADDRESS_MOJEID_HOME, UC_ADDRESS_MOJEID_BILLING, UC_ADDRESS_MOJEID_SHIPPING))) {
+    // Prevent user from editing the mojeID address name when the user has some
+    // active mojeID account.
+    $uid = $form['stored_values']['#value']['user']->uid;
+    $is_mojeid_address = in_array($form['panes']['address']['address_name']['#default_value'], array(UC_ADDRESS_MOJEID_HOME, UC_ADDRESS_MOJEID_BILLING, UC_ADDRESS_MOJEID_SHIPPING));
+    if ($is_mojeid_address && mojeid_uc_addresses_mojeid_exists($uid)) {
       $address = &$form['panes']['address'];
-
       $address['address_name_preview'] = $address['address_name'];
       // TODO: use theme function to translate
       $address['address_name_preview']['#default_value'] = $address['address_name']['#default_value'];
@@ -178,7 +180,7 @@ function mojeid_uc_addresses_save(stdClass $address, $addresses) {
   $status = FALSE;
 
   if (mojeid_uc_addresses_is_empty($address)) {
-    drupal_set_message(t("Address %address can't be saved because it doesn't contain all required values.", array('%address' => $address->address_name)), 'warning');
+    drupal_set_message(t("Address %address can't be saved because required values street and/or city are missing.", array('%address' => $address->address_name)), 'warning');
     return FALSE;
   }
 
@@ -202,6 +204,28 @@ function mojeid_uc_addresses_save(stdClass $address, $addresses) {
   }
 
   return $status;
+}
+
+/**
+ * Checks if exists any mojeID account for the given User ID.
+ *
+ * @param int $uid
+ * 	The user ID.
+ *
+ * @return boolean
+ */
+function mojeid_uc_addresses_mojeid_exists($uid) {
+  static $mojeid_users = array();
+
+  if (!$uid) {
+    return FALSE;
+  }
+
+  if (!isset($mojeid_users[$uid])) {
+    $mojeid_users[$uid] = (bool) db_result(db_query("SELECT aid FROM authmap WHERE uid=%d AND module='openid' AND authname LIKE '%.mojeid.cz/%'", $uid));
+  }
+
+  return $mojeid_users[$uid];
 }
 
 /**

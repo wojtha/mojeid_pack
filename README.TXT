@@ -23,6 +23,12 @@ a http://drupal.org/node/1120290
 
 ZMĚNY
 
+2011-12-07 6.x-1.0-beta3
+ - Oprava chyby INFO souboru (Jan Pobořil) 
+ - Oprava chyb v textech UI (Radim Klaska)
+ - Addresses: Adresy je možné přejmenovat při odstranění mojeID účtu
+ - Addresses: Lepší varování v případě importu neúplné adresy.  
+
 2011-10-28 6.x-1.0-beta2
  - Oprava chyby v mojeID modulu http://drupal.org/node/1253464 
  - Refaktoring
